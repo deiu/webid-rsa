@@ -65,7 +65,7 @@ func NewRandomID() string {
 
 // ParseRSAPublicKeyNE parses a modulus and exponent and returns a new verifier object
 func ParseRSAPublicKeyNE(keyT, keyN, keyE string) (Verifier, error) {
-	if len(keyN) == 0 && len(keyE) == 0 {
+	if len(keyN) == 0 || len(keyE) == 0 {
 		return nil, errors.New("No modulus and/or exponent provided")
 	}
 	intN := new(big.Int)
