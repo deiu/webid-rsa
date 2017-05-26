@@ -152,6 +152,7 @@ func Authenticate(req *http.Request) (string, error) {
 				if err == nil {
 					err = parser.Verify(claim[:], signature)
 					if err == nil {
+						deleteToken(authH.Nonce)
 						return authH.Username, nil
 					}
 				}
@@ -202,6 +203,7 @@ func ValidateToken(auth *RSAAuthorization) error {
 		return errors.New("Could not find a token that matches " + auth.Nonce)
 	}
 	if time.Now().Local().UnixNano() > token.Valid {
+		deleteToken(token.Nonce)
 		return errors.New("Token expired for " + auth.Username)
 	}
 	return nil
@@ -213,4 +215,8 @@ func saveToken(token *Token) {
 
 func getToken(id string) *Token {
 	return tokens[id]
+}
+
+func deleteToken(id string) {
+	delete(tokens, id)
 }

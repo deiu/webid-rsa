@@ -26,7 +26,7 @@ func init() {
 
 func MockServer() http.Handler {
 	handler := http.NewServeMux()
-	handler.Handle("/mod", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	handler.Handle("/ok", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		webidProfile := `@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 <#me> a <http://xmlns.com/foaf/0.1/Person> ;
 	<http://www.w3.org/ns/auth/cert#key> <#one> .
@@ -41,11 +41,41 @@ func MockServer() http.Handler {
 		w.Write([]byte(webidProfile))
 		return
 	}))
+	handler.Handle("/bad", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		webidProfile := `@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+<#me> a <http://xmlns.com/foaf/0.1/Person> ;
+	<http://www.w3.org/ns/auth/cert#key> <#one> .
+
+<#one>
+    a <http://www.w3.org/ns/auth/cert#RSAPublicKey> ;
+    <http://www.w3.org/ns/auth/cert#modulus> "c2144346c37df21a2872f76a438d94219740b7eab3c98fe0af7d20bcfaadbc871035eb5405354775df0b824d472ad10776aac05eff6845c9cd83089260d21d4befcfba67850c47b10e7297dd504f477f79bf86cf85511e39b8125e0cad474851c3f1b1ca0fa92ff053c67c94e8b5cfb6c63270a188bed61aa9d5f21e91ac6cc9"^^<http://www.w3.org/2001/XMLSchema#hexBinary> .
+`
+		w.Header().Set("Content-Type", "text/turtle")
+		w.WriteHeader(200)
+		w.Write([]byte(webidProfile))
+		return
+	}))
+
+	handler.Handle("/exp", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		webidProfile := `@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+<#me> a <http://xmlns.com/foaf/0.1/Person> ;
+	<http://www.w3.org/ns/auth/cert#key> <#one> .
+
+<#one>
+    a <http://www.w3.org/ns/auth/cert#RSAPublicKey> ;
+    <http://www.w3.org/ns/auth/cert#exponent> "1"^^<http://www.w3.org/2001/XMLSchema#int> ;
+    <http://www.w3.org/ns/auth/cert#modulus> "c2144346c37df21a2872f76a438d94219740b7eab3c98fe0af7d20bcfaadbc871035eb5405354775df0b824d472ad10776aac05eff6845c9cd83089260d21d4befcfba67850c47b10e7297dd504f477f79bf86cf85511e39b8125e0cad474851c3f1b1ca0fa92ff053c67c94e8b5cfb6c63270a188bed61aa9d5f21e91ac6cc9"^^<http://www.w3.org/2001/XMLSchema#hexBinary> .
+`
+		w.Header().Set("Content-Type", "text/turtle")
+		w.WriteHeader(200)
+		w.Write([]byte(webidProfile))
+		return
+	}))
 	return handler
 }
 
-func TestAuthenticate(t *testing.T) {
-	user1 := testMockServer.URL + "/mod#me"
+func TestAuthenticateOK(t *testing.T) {
+	user := testMockServer.URL + "/ok#me"
 
 	req, err := http.NewRequest("GET", testMockServer.URL, nil)
 	assert.NoError(t, err)
@@ -57,15 +87,15 @@ func TestAuthenticate(t *testing.T) {
 	signer, err := ParseRSAPrivatePEMKey(privKey)
 	assert.NoError(t, err)
 
-	claim := sha1.Sum([]byte(token.Source + user1 + token.Nonce))
+	claim := sha1.Sum([]byte(token.Source + user + token.Nonce))
 	signed, err := signer.Sign(claim[:])
 	assert.NoError(t, err)
 	b64Sig := base64.StdEncoding.EncodeToString(signed)
 	assert.NotEmpty(t, b64Sig)
 
-	authHeader := `WebID-RSA source="` + token.Source + `", username="` + user1 + `", nonce="` + token.Nonce + `", sig="` + b64Sig + `"`
+	authHeader := `WebID-RSA source="` + token.Source + `", username="` + user + `", nonce="` + token.Nonce + `", sig="` + b64Sig + `"`
 
-	req, err = http.NewRequest("GET", testMockServer.URL+"/mod", nil)
+	req, err = http.NewRequest("GET", testMockServer.URL+"/ok", nil)
 	assert.NoError(t, err)
 	req.Header.Add("Authorization", authHeader)
 	res, err := testClient.Do(req)
@@ -75,7 +105,124 @@ func TestAuthenticate(t *testing.T) {
 
 	authUser, err := Authenticate(req)
 	assert.NoError(t, err)
-	assert.Equal(t, user1, authUser)
+	assert.Equal(t, user, authUser)
+
+	assert.Nil(t, getToken(token.Nonce))
+}
+
+func TestAuthenticateBad(t *testing.T) {
+	user := testMockServer.URL + "/bad#me"
+
+	req, err := http.NewRequest("GET", testMockServer.URL, nil)
+	assert.NoError(t, err)
+
+	// Load private key
+	signer, err := ParseRSAPrivatePEMKey(privKey)
+	assert.NoError(t, err)
+
+	// bad token
+	DurationScale = time.Microsecond
+	token := NewToken(req)
+	saveToken(token)
+
+	claim := sha1.Sum([]byte(token.Source + user + token.Nonce))
+	signed, err := signer.Sign(claim[:])
+	assert.NoError(t, err)
+	b64Sig := base64.StdEncoding.EncodeToString(signed)
+	assert.NotEmpty(t, b64Sig)
+
+	authHeader := `WebID-RSA source="` + token.Source + `", username="` + user + `", nonce="` + token.Nonce + `", sig="` + b64Sig + `"`
+	time.Sleep(time.Millisecond * 1)
+	req.Header.Add("Authorization", authHeader)
+	authUser, err := Authenticate(req)
+	assert.Error(t, err)
+	assert.Empty(t, authUser)
+	assert.Nil(t, getToken(token.Nonce))
+	DurationScale = time.Minute
+
+	// generate token
+	token = NewToken(req)
+	saveToken(token)
+
+	claim = sha1.Sum([]byte(token.Source + user + token.Nonce))
+	signed, err = signer.Sign(claim[:])
+	assert.NoError(t, err)
+	b64Sig = base64.StdEncoding.EncodeToString(signed)
+	assert.NotEmpty(t, b64Sig)
+
+	authHeader = `WebID-RSA source="` + token.Source + `", username="` + user + `", nonce="` + token.Nonce + `", sig="` + b64Sig + `"`
+
+	req, err = http.NewRequest("GET", testMockServer.URL+"/bad", nil)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", authHeader)
+	res, err := testClient.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, res.StatusCode)
+	assert.Equal(t, "text/turtle", res.Header.Get("Content-Type"))
+
+	authUser, err = Authenticate(req)
+	assert.Error(t, err)
+	assert.Empty(t, authUser)
+
+	authHeader = `WebID-DSA source="` + token.Source + `", username="` + user + `", nonce="` + token.Nonce + `", sig="` + b64Sig + `"`
+	req, err = http.NewRequest("GET", testMockServer.URL+"/bad", nil)
+	assert.NoError(t, err)
+	authUser, err = Authenticate(req)
+	assert.NoError(t, err)
+	assert.Empty(t, authUser)
+
+	authHeader = `WebID-RSA source="badsource", username="` + user + `", nonce="` + token.Nonce + `", sig="` + b64Sig + `"`
+	req.Header.Set("Authorization", authHeader)
+	authUser, err = Authenticate(req)
+	assert.Error(t, err)
+	assert.Empty(t, authUser)
+
+	authHeader = `WebID-RSA source="` + token.Source + `", username="` + user + `", nonce="` + token.Nonce + `", sig="f00"`
+	req.Header.Set("Authorization", authHeader)
+	authUser, err = Authenticate(req)
+	assert.Error(t, err)
+	assert.Empty(t, authUser)
+
+	authHeader = `WebID-RSA source="` + token.Source + `", username="", nonce="` + token.Nonce + `", sig="` + b64Sig + `"`
+	req.Header.Set("Authorization", authHeader)
+	authUser, err = Authenticate(req)
+	assert.Error(t, err)
+	assert.Empty(t, authUser)
+
+	authHeader = `WebID-RSA source="` + token.Source + `", username="f00", nonce="` + token.Nonce + `", sig="` + b64Sig + `"`
+	req.Header.Set("Authorization", authHeader)
+	authUser, err = Authenticate(req)
+	assert.Error(t, err)
+	assert.Empty(t, authUser)
+
+	authHeader = `WebID-RSA source="` + token.Source + `", username="https://example", nonce="` + token.Nonce + `", sig="` + b64Sig + `"`
+	req.Header.Set("Authorization", authHeader)
+	authUser, err = Authenticate(req)
+	assert.Error(t, err)
+	assert.Empty(t, authUser)
+
+	authHeader = `WebID-DSA source="` + token.Source + `", username="` + user + `", nonce="` + token.Nonce + `", sig="` + b64Sig + `"`
+	req.Header.Set("Authorization", authHeader)
+	authUser, err = Authenticate(req)
+	assert.Error(t, err)
+	assert.Empty(t, authUser)
+
+	user = testMockServer.URL + "/exp#me"
+	token = NewToken(req)
+	saveToken(token)
+
+	claim = sha1.Sum([]byte(token.Source + user + token.Nonce))
+	signed, err = signer.Sign(claim[:])
+	assert.NoError(t, err)
+	b64Sig = base64.StdEncoding.EncodeToString(signed)
+	assert.NotEmpty(t, b64Sig)
+
+	authHeader = `WebID-RSA source="` + token.Source + `", username="` + user + `", nonce="` + token.Nonce + `", sig="` + b64Sig + `"`
+	req.Header.Set("Authorization", authHeader)
+	authUser, err = Authenticate(req)
+	assert.NoError(t, err)
+	assert.Empty(t, authUser)
+
 }
 
 func TestParseRSAAuthorizationHeader(t *testing.T) {
@@ -146,6 +293,7 @@ func TestAuthToken(t *testing.T) {
 	assert.NoError(t, err)
 	err = ValidateToken(auth)
 	assert.Error(t, err)
+	assert.Nil(t, getToken(token.Nonce))
 	DurationScale = time.Minute
 }
 
