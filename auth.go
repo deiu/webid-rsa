@@ -6,7 +6,6 @@ import (
 	"errors"
 	"net"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -14,8 +13,17 @@ import (
 )
 
 var (
-	tokens = map[string]map[string]string{}
+	tokens = map[string]*Token{}
+	// token validity in minutes
+	TokenDuration = 1
+	DurationScale = time.Minute
 )
+
+type Token struct {
+	Source string
+	Nonce  string
+	Valid  int64
+}
 
 // RSAAuthentication structure
 type RSAAuthentication struct {
@@ -100,7 +108,7 @@ func Authenticate(req *http.Request) (string, error) {
 		return "", err
 	}
 
-	if len(authH.Source) == 0 || authH.Source != getOrigin(req) {
+	if len(authH.Source) == 0 || authH.Source != req.Host {
 		return "", errors.New("Bad source URI for auth token: " + authH.Source + " -- possible MITM attack!")
 	}
 
@@ -133,27 +141,18 @@ func Authenticate(req *http.Request) (string, error) {
 
 	for _, keyT := range g.All(rdf.NewResource(authH.Username), ns.cert.Get("key"), nil) {
 		for range g.All(keyT.Object, ns.rdf.Get("type"), ns.cert.Get("RSAPublicKey")) {
-			for _, pubP := range g.All(keyT.Object, ns.cert.Get("pem"), nil) {
-				keyP := pubP.Object.String()
-				parser, err := ParseRSAPublicPEMKey([]byte(keyP))
+			for _, pubN := range g.All(keyT.Object, ns.cert.Get("modulus"), nil) {
+				keyN := unquote(pubN.Object.RawValue())
+				pubE := g.One(keyT.Object, ns.cert.Get("exponent"), nil)
+				if pubE == nil {
+					return "", errors.New("No exponent found")
+				}
+				keyE := unquote(pubE.Object.RawValue())
+				parser, err := ParseRSAPublicKeyNE("RSAPublicKey", keyN, keyE)
 				if err == nil {
 					err = parser.Verify(claim[:], signature)
 					if err == nil {
 						return authH.Username, nil
-					}
-				}
-			}
-			// also loop through modulus/exp
-			for _, pubN := range g.All(keyT.Object, ns.cert.Get("modulus"), nil) {
-				keyN := pubN.Object.String()
-				for _, pubE := range g.All(keyT.Object, ns.cert.Get("exponent"), nil) {
-					keyE := pubE.Object.String()
-					parser, err := ParseRSAPublicKeyNE("RSAPublicKey", keyN, keyE)
-					if err == nil {
-						err = parser.Verify(claim[:], signature)
-						if err == nil {
-							return authH.Username, nil
-						}
 					}
 				}
 			}
@@ -188,31 +187,30 @@ func getOrigin(req *http.Request) string {
 	return scheme + "://" + host + port
 }
 
+func NewToken(req *http.Request) *Token {
+	token := &Token{}
+	token.Source = req.Host
+	d := time.Duration(TokenDuration) * DurationScale
+	token.Valid = time.Now().Add(d).UnixNano()
+	token.Nonce = NewRandomID()
+	return token
+}
+
 func ValidateToken(auth *RSAAuthorization) error {
 	token := tokens[auth.Nonce]
 	if token == nil {
 		return errors.New("Could not find a token that matches " + auth.Nonce)
 	}
-	v, err := strconv.ParseInt(token["valid"], 10, 64)
-	if err != nil {
-		return err
-	}
-	if time.Now().Local().Unix() > v {
-		return errors.New("Token expired for " + token["username"])
-	}
-	if len(token["secret"]) == 0 {
-		return errors.New("Missing secret from token (tempered with?)")
-	}
-	if token["secret"] != "secret" {
-		return errors.New("Wrong secret value in client token!")
+	if time.Now().Local().UnixNano() > token.Valid {
+		return errors.New("Token expired for " + auth.Username)
 	}
 	return nil
 }
 
-func setToken(token map[string]string) {
-	tokens[NewRandomID()] = token
+func saveToken(token *Token) {
+	tokens[token.Nonce] = token
 }
 
-func getToken(id string) map[string]string {
+func getToken(id string) *Token {
 	return tokens[id]
 }
