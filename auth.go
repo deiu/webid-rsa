@@ -128,6 +128,7 @@ func Authenticate(req *http.Request) (string, error) {
 	}
 
 	// Decrypt and validate nonce from secure token
+	// TODO: move this elsewhere to allow different handling of tokens
 	err = ValidateToken(authH)
 	if err != nil {
 		return "", err
@@ -161,6 +162,12 @@ func Authenticate(req *http.Request) (string, error) {
 	}
 
 	return "", err
+}
+
+func NewRSAAuthenticate(req *http.Request) string {
+	token := NewToken(req)
+	saveToken(token)
+	return `WebID-RSA source="` + token.Source + `", nonce="` + token.Nonce + `"`
 }
 
 func getOrigin(req *http.Request) string {

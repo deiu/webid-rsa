@@ -26,6 +26,23 @@ func init() {
 
 func MockServer() http.Handler {
 	handler := http.NewServeMux()
+	handler.Handle("/real", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		user := ""
+		authz := req.Header.Get("Authorization")
+		if len(authz) > 0 {
+			user, _ = Authenticate(req)
+		}
+		if len(user) == 0 {
+			authH := NewRSAAuthenticate(req)
+			w.Header().Set("WWW-Authenticate", authH)
+			w.WriteHeader(401)
+			return
+		}
+
+		w.Header().Set("User", user)
+		w.WriteHeader(200)
+		return
+	}))
 	handler.Handle("/ok", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		webidProfile := `@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 <#me> a <http://xmlns.com/foaf/0.1/Person> ;
@@ -106,8 +123,32 @@ func TestAuthenticateOK(t *testing.T) {
 	authUser, err := Authenticate(req)
 	assert.NoError(t, err)
 	assert.Equal(t, user, authUser)
-
 	assert.Nil(t, getToken(token.Nonce))
+
+	req, err = http.NewRequest("GET", testMockServer.URL+"/real", nil)
+	assert.NoError(t, err)
+	res, err = testClient.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 401, res.StatusCode)
+	assert.Empty(t, res.Header.Get("User"))
+
+	authz, err := ParseRSAAuthenticateHeader(res.Header.Get("WWW-Authenticate"))
+	assert.NoError(t, err)
+
+	claim = sha1.Sum([]byte(authz.Source + user + authz.Nonce))
+	signed, err = signer.Sign(claim[:])
+	assert.NoError(t, err)
+	b64Sig = base64.StdEncoding.EncodeToString(signed)
+	assert.NotEmpty(t, b64Sig)
+
+	authHeader = `WebID-RSA source="` + authz.Source + `", username="` + user + `", nonce="` + authz.Nonce + `", sig="` + b64Sig + `"`
+	req, err = http.NewRequest("GET", testMockServer.URL+"/real", nil)
+	assert.NoError(t, err)
+	req.Header.Set("Authorization", authHeader)
+	res, err = testClient.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, res.StatusCode)
+	assert.Equal(t, user, res.Header.Get("User"))
 }
 
 func TestAuthenticateBad(t *testing.T) {
@@ -222,7 +263,6 @@ func TestAuthenticateBad(t *testing.T) {
 	authUser, err = Authenticate(req)
 	assert.NoError(t, err)
 	assert.Empty(t, authUser)
-
 }
 
 func TestParseRSAAuthorizationHeader(t *testing.T) {
@@ -250,6 +290,17 @@ func TestParseRSAAuthorizationHeader(t *testing.T) {
 	assert.Equal(t, "string2", p.Signature)
 }
 
+func TestNewRSAAuthenticate(t *testing.T) {
+	req, err := http.NewRequest("GET", testMockServer.URL, nil)
+	assert.NoError(t, err)
+	authH := NewRSAAuthenticate(req)
+
+	parsed, err := ParseRSAAuthenticateHeader(authH)
+	assert.NoError(t, err)
+	assert.Equal(t, randLength, len(parsed.Nonce))
+	assert.Equal(t, req.Host, parsed.Source)
+}
+
 func TestParseRSAAuthenticateHeader(t *testing.T) {
 	_, err := ParseRSAAuthenticateHeader("")
 	assert.Error(t, err)
@@ -263,11 +314,10 @@ func TestParseRSAAuthenticateHeader(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "string1", p.Nonce)
 	assert.Equal(t, "http://server.org/", p.Source)
-
 }
 
 func TestAuthToken(t *testing.T) {
-	req, err := http.NewRequest("GET", "http://example.com", nil)
+	req, err := http.NewRequest("GET", testMockServer.URL, nil)
 	assert.NoError(t, err)
 	token := NewToken(req)
 	assert.Equal(t, req.Host, token.Source)
