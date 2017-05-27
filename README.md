@@ -26,8 +26,8 @@ func main() {
 			user, _ = webidrsa.Authenticate(req)
 		}
 		if len(user) == 0 {
-			authH := webidrsa.NewRSAAuthenticateHeader(req)
-			w.Header().Set("WWW-Authenticate", authH)
+			authn := webidrsa.NewAuthenticateHeader(req)
+			w.Header().Set("WWW-Authenticate", authn)
 			w.WriteHeader(401)
 			return
 		}
