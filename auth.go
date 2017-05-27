@@ -164,7 +164,7 @@ func Authenticate(req *http.Request) (string, error) {
 	return "", err
 }
 
-func NewRSAAuthenticate(req *http.Request) string {
+func NewRSAAuthenticateHeader(req *http.Request) string {
 	token := NewToken(req)
 	saveToken(token)
 	return `WebID-RSA source="` + token.Source + `", nonce="` + token.Nonce + `"`

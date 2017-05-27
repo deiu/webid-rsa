@@ -33,7 +33,7 @@ func MockServer() http.Handler {
 			user, _ = Authenticate(req)
 		}
 		if len(user) == 0 {
-			authH := NewRSAAuthenticate(req)
+			authH := NewRSAAuthenticateHeader(req)
 			w.Header().Set("WWW-Authenticate", authH)
 			w.WriteHeader(401)
 			return
@@ -293,7 +293,7 @@ func TestParseRSAAuthorizationHeader(t *testing.T) {
 func TestNewRSAAuthenticate(t *testing.T) {
 	req, err := http.NewRequest("GET", testMockServer.URL, nil)
 	assert.NoError(t, err)
-	authH := NewRSAAuthenticate(req)
+	authH := NewRSAAuthenticateHeader(req)
 
 	parsed, err := ParseRSAAuthenticateHeader(authH)
 	assert.NoError(t, err)
