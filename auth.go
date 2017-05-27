@@ -25,19 +25,19 @@ type Token struct {
 	Valid  int64
 }
 
-// RSAAuthentication structure
-type RSAAuthentication struct {
+// Authentication structure
+type Authentication struct {
 	Source, Nonce, Username string
 }
 
-// RSAAuthorization structure
-type RSAAuthorization struct {
+// Authorization structure
+type Authorization struct {
 	Source, Username, Nonce, Signature string
 }
 
-// ParseRSAAuthorizationHeader parses an Authorization header into a local RSAAuthorization structure
-func ParseRSAAuthorizationHeader(header string) (*RSAAuthorization, error) {
-	auth := &RSAAuthorization{}
+// ParseAuthorizationHeader parses an Authorization header into a local Authorization structure
+func ParseAuthorizationHeader(header string) (*Authorization, error) {
+	auth := &Authorization{}
 
 	if len(header) == 0 {
 		return auth, errors.New("Cannot parse Authorization header: no header present")
@@ -58,7 +58,7 @@ func ParseRSAAuthorizationHeader(header string) (*RSAAuthorization, error) {
 		opts[key] = val
 	}
 
-	auth = &RSAAuthorization{
+	auth = &Authorization{
 		opts["source"],
 		opts["username"],
 		opts["nonce"],
@@ -67,9 +67,9 @@ func ParseRSAAuthorizationHeader(header string) (*RSAAuthorization, error) {
 	return auth, nil
 }
 
-// ParseRSAAuthenticateHeader parses an Authenticate header and returns an RSAAuthentication object
-func ParseRSAAuthenticateHeader(header string) (*RSAAuthentication, error) {
-	auth := &RSAAuthentication{}
+// ParseAuthenticateHeader parses an Authenticate header and returns an Authentication object
+func ParseAuthenticateHeader(header string) (*Authentication, error) {
+	auth := &Authentication{}
 
 	if len(header) == 0 {
 		return auth, errors.New("Cannot parse WWW-Authenticate header: no header present")
@@ -90,7 +90,7 @@ func ParseRSAAuthenticateHeader(header string) (*RSAAuthentication, error) {
 		opts[key] = val
 	}
 
-	auth = &RSAAuthentication{
+	auth = &Authentication{
 		Source: opts["source"],
 		Nonce:  opts["nonce"],
 	}
@@ -103,7 +103,7 @@ func Authenticate(req *http.Request) (string, error) {
 		return "", nil
 	}
 
-	authH, err := ParseRSAAuthorizationHeader(req.Header.Get("Authorization"))
+	authH, err := ParseAuthorizationHeader(req.Header.Get("Authorization"))
 	if err != nil {
 		return "", err
 	}
@@ -149,7 +149,7 @@ func Authenticate(req *http.Request) (string, error) {
 					return "", errors.New("No exponent found")
 				}
 				keyE := unquote(pubE.Object.RawValue())
-				parser, err := ParseRSAPublicKeyNE("RSAPublicKey", keyN, keyE)
+				parser, err := ParsePublicKeyNE("RSAPublicKey", keyN, keyE)
 				if err == nil {
 					err = parser.Verify(claim[:], signature)
 					if err == nil {
@@ -164,7 +164,7 @@ func Authenticate(req *http.Request) (string, error) {
 	return "", err
 }
 
-func NewRSAAuthenticateHeader(req *http.Request) string {
+func NewAuthenticateHeader(req *http.Request) string {
 	token := NewToken(req)
 	saveToken(token)
 	return `WebID-RSA source="` + token.Source + `", nonce="` + token.Nonce + `"`
@@ -204,7 +204,7 @@ func NewToken(req *http.Request) *Token {
 	return token
 }
 
-func ValidateToken(auth *RSAAuthorization) error {
+func ValidateToken(auth *Authorization) error {
 	token := tokens[auth.Nonce]
 	if token == nil {
 		return errors.New("Could not find a token that matches " + auth.Nonce)

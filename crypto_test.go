@@ -52,51 +52,51 @@ func TestSignaturesRSA(t *testing.T) {
 	h := `WebID-RSA source="https://deiu.me/Private/", username="https://deiu.me/profile#me", nonce="MTQzODc4MzA5NXxtS1dYcVd4bGRjVXQ2bFVEMXk2NE5KMDU1TFB3Nk9qM2FmMWduMk4tdl9tWDdvZXBtdUJSa1ZMRHE4WWZ1dUE0RlNGeDl0OGt6SGZnbkpZbW5CWE96TUxRamJ6a3xCC-Ik7gERpCBc__l2OK0DxVxyIiLTDVZ7rLIib2MNSQ==", sig="qiTKnXaXgMfGEA2LLCqhFWiB+6T9gXvLR6nO2dCvk71nBoK3MiwLxbsF83uKT81ur9SucDJ2fmjLKPbP9o7NrkYrM45rkPJsXHjbAzHDw2DftKLez5DF70HtDa1rEaUEF1mLrNMGfL4VYea5z15lNNNiDKaJpCwhgeHNB1x2qNY="`
 	_toSign := `https://deiu.me/Private/https://deiu.me/profile#meMTQzODc4MzA5NXxtS1dYcVd4bGRjVXQ2bFVEMXk2NE5KMDU1TFB3Nk9qM2FmMWduMk4tdl9tWDdvZXBtdUJSa1ZMRHE4WWZ1dUE0RlNGeDl0OGt6SGZnbkpZbW5CWE96TUxRamJ6a3xCC-Ik7gERpCBc__l2OK0DxVxyIiLTDVZ7rLIib2MNSQ==`
 	_sig := `qiTKnXaXgMfGEA2LLCqhFWiB+6T9gXvLR6nO2dCvk71nBoK3MiwLxbsF83uKT81ur9SucDJ2fmjLKPbP9o7NrkYrM45rkPJsXHjbAzHDw2DftKLez5DF70HtDa1rEaUEF1mLrNMGfL4VYea5z15lNNNiDKaJpCwhgeHNB1x2qNY=`
-	p, err := ParseRSAAuthorizationHeader(h)
+	p, err := ParseAuthorizationHeader(h)
 	assert.NoError(t, err)
 
 	assert.Equal(t, _sig, p.Signature)
 
-	parserPem, perr := ParseRSAPublicPEMKey([]byte(""))
+	parserPem, perr := ParsePublicPEMKey([]byte(""))
 	assert.Error(t, perr)
 	assert.Nil(t, parserPem)
 
-	parserPem, perr = ParseRSAPublicPEMKey([]byte(`-----BEGIN RSA PUBLIC KEY-----
+	parserPem, perr = ParsePublicPEMKey([]byte(`-----BEGIN RSA PUBLIC KEY-----
 MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDCFENGw33yGihy92pDjZQhl0C3
 oYi+1hqp1fIekaxsyQIDAQAB
 -----END RSA PUBLIC KEY-----`))
 	assert.Error(t, perr)
 	assert.Nil(t, parserPem)
 
-	parserPem, perr = ParseRSAPublicPEMKey([]byte(`-----BEGIN RSA FUNKY KEY-----
+	parserPem, perr = ParsePublicPEMKey([]byte(`-----BEGIN RSA FUNKY KEY-----
 MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDCFENGw33yGihy92pDjZQhl0C3
 -----END RSA FUNKY KEY-----`))
 	assert.Error(t, perr)
 	assert.Nil(t, parserPem)
 
-	parserPem, perr = ParseRSAPublicPEMKey(pubKey)
+	parserPem, perr = ParsePublicPEMKey(pubKey)
 	assert.NoError(t, perr)
 
-	parser, perr := ParseRSAPublicKeyNE(pubT, "", pubE)
+	parser, perr := ParsePublicKeyNE(pubT, "", pubE)
 	assert.Nil(t, parser)
 	assert.Error(t, perr)
 
-	parser, perr = ParseRSAPublicKeyNE(pubT, pubN, "a")
+	parser, perr = ParsePublicKeyNE(pubT, pubN, "a")
 	assert.Nil(t, parser)
 	assert.Error(t, perr)
 
-	parser, perr = ParseRSAPublicKeyNE("DSAPublicKey", pubN, pubE)
+	parser, perr = ParsePublicKeyNE("DSAPublicKey", pubN, pubE)
 	assert.Nil(t, parser)
 	assert.Error(t, perr)
 
-	parser, perr = ParseRSAPublicKeyNE(pubT, pubN, pubE)
+	parser, perr = ParsePublicKeyNE(pubT, pubN, pubE)
 	assert.NoError(t, perr)
 
-	signer, err := ParseRSAPrivatePEMKey([]byte(""))
+	signer, err := ParsePrivatePEMKey([]byte(""))
 	assert.Error(t, err)
 	assert.Nil(t, signer)
 
-	signer, err = ParseRSAPrivatePEMKey([]byte(`-----BEGIN RSA FUNKY KEY-----
+	signer, err = ParsePrivatePEMKey([]byte(`-----BEGIN RSA FUNKY KEY-----
 MIICXgIBAAKBgQDCFENGw33yGihy92pDjZQhl0C36rPJj+CvfSC8+q28hxA161QF
 NUd13wuCTUcq0Qd2qsBe/2hFyc2DCJJg0h1L78+6Z4UMR7EOcpfdUE9Hf3m/hs+F
 UR45uBJeDK1HSFHD8bHKD6kv8FPGfJTotc+2xjJwoYi+1hqp1fIekaxsyQIDAQAB
@@ -114,7 +114,7 @@ G6aFKaqQfOXKCyWoUiVknQJAXrlgySFci/2ueKlIE1QqIiLSZ8V8OlpFLRnb1pzI
 	assert.Error(t, err)
 	assert.Nil(t, signer)
 
-	signer, err = ParseRSAPrivatePEMKey([]byte(`-----BEGIN RSA PRIVATE KEY-----
+	signer, err = ParsePrivatePEMKey([]byte(`-----BEGIN RSA PRIVATE KEY-----
 MIICXgIBAAKBgQDCFENGw33yGihy92pDjZQhl0C36rPJj+CvfSC8+q28hxA161QF
 kpyUXRNvFsDE0czpJJBvL/aRFUJxuRK91jhjC68sA7NsKMGg5OXb5I5Jj36xAkEA
 gIT7aFOYBFwGgQAQkWNKLvySgKbAZRTeLBacpHMuQdl1DfdntvAyqpAZ0lY0RKmW
@@ -124,7 +124,7 @@ G6aFKaqQfOXKCyWoUiVknQJAXrlgySFci/2ueKlIE1QqIiLSZ8V8OlpFLRnb1pzI
 	assert.Error(t, err)
 	assert.Nil(t, signer)
 
-	signer, err = ParseRSAPrivatePEMKey(privKey)
+	signer, err = ParsePrivatePEMKey(privKey)
 	assert.NoError(t, err)
 
 	toSign := p.Source + p.Username + p.Nonce
@@ -157,7 +157,7 @@ func TestSignAndVerify(t *testing.T) {
 	toSign := "some string"
 	claim := sha1.Sum([]byte(toSign))
 
-	signer, err := ParseRSAPrivatePEMKey(privKey)
+	signer, err := ParsePrivatePEMKey(privKey)
 	assert.NoError(t, err)
 
 	signed, err := signer.Sign(claim[:])
@@ -166,21 +166,21 @@ func TestSignAndVerify(t *testing.T) {
 	sig := base64.URLEncoding.EncodeToString(signed)
 	assert.NotEmpty(t, sig)
 
-	parser, perr := ParseRSAPublicPEMKey(pubKey)
+	parser, perr := ParsePublicPEMKey(pubKey)
 	assert.NoError(t, perr)
 
 	err = parser.Verify(claim[:], signed)
 	assert.NoError(t, err)
 
-	// check with ParsePublicRSAKey
-	parser, err = ParseRSAPublicKeyNE(pubT, pubN, pubE)
+	// check with ParsePublicKey
+	parser, err = ParsePublicKeyNE(pubT, pubN, pubE)
 	assert.NoError(t, perr)
 
 	err = parser.Verify(claim[:], signed)
 	assert.NoError(t, err)
 
 	// check with parse rsa.PublicKey
-	signer, err = ParseRSAPrivateKey(testPriv)
+	signer, err = ParsePrivateKey(testPriv)
 	assert.NoError(t, err)
 
 	signed, err = signer.Sign(claim[:])
@@ -189,7 +189,7 @@ func TestSignAndVerify(t *testing.T) {
 	sig = base64.StdEncoding.EncodeToString(signed)
 	assert.NotEmpty(t, sig)
 
-	parser, perr = ParseRSAPublicKey(testPub)
+	parser, perr = ParsePublicKey(testPub)
 	assert.NoError(t, perr)
 
 	err = parser.Verify(claim[:], signed)

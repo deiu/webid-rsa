@@ -63,8 +63,8 @@ func NewRandomID() string {
 	return string(id)
 }
 
-// ParseRSAPublicKeyNE parses a modulus and exponent and returns a new verifier object
-func ParseRSAPublicKeyNE(keyT, keyN, keyE string) (Verifier, error) {
+// ParsePublicKeyNE parses a modulus and exponent and returns a new verifier object
+func ParsePublicKeyNE(keyT, keyN, keyE string) (Verifier, error) {
 	if len(keyN) == 0 || len(keyE) == 0 {
 		return nil, errors.New("No modulus and/or exponent provided")
 	}
@@ -89,18 +89,18 @@ func ParseRSAPublicKeyNE(keyT, keyN, keyE string) (Verifier, error) {
 	return newVerifierFromKey(rawkey)
 }
 
-// ParseRSAPublicKey parses an RSA public key and returns a new verifier object
-func ParseRSAPublicKey(key *rsa.PublicKey) (Verifier, error) {
+// ParsePublicKey parses an RSA public key and returns a new verifier object
+func ParsePublicKey(key *rsa.PublicKey) (Verifier, error) {
 	return newVerifierFromKey(key)
 }
 
-// ParseRSAPrivateKey parses an RSA private key and returns a new signer object
-func ParseRSAPrivateKey(key *rsa.PrivateKey) (Signer, error) {
+// ParsePrivateKey parses an RSA private key and returns a new signer object
+func ParsePrivateKey(key *rsa.PrivateKey) (Signer, error) {
 	return newSignerFromKey(key)
 }
 
-// ParseRSAPublicPEMKey parses a PEM encoded private key and returns a new verifier object
-func ParseRSAPublicPEMKey(pemBytes []byte) (Verifier, error) {
+// ParsePublicPEMKey parses a PEM encoded private key and returns a new verifier object
+func ParsePublicPEMKey(pemBytes []byte) (Verifier, error) {
 	block, _ := pem.Decode(pemBytes)
 	if block == nil {
 		return nil, errors.New("No key found")
@@ -121,8 +121,8 @@ func ParseRSAPublicPEMKey(pemBytes []byte) (Verifier, error) {
 	return newVerifierFromKey(rawkey)
 }
 
-// ParseRSAPrivatePEMKey parses a PEM encoded private key and returns a Signer.
-func ParseRSAPrivatePEMKey(pemBytes []byte) (Signer, error) {
+// ParsePrivatePEMKey parses a PEM encoded private key and returns a Signer.
+func ParsePrivatePEMKey(pemBytes []byte) (Signer, error) {
 	block, _ := pem.Decode(pemBytes)
 	if block == nil {
 		return nil, errors.New("No key found or could not decode PEM key")

@@ -33,7 +33,7 @@ func MockServer() http.Handler {
 			user, _ = Authenticate(req)
 		}
 		if len(user) == 0 {
-			authH := NewRSAAuthenticateHeader(req)
+			authH := NewAuthenticateHeader(req)
 			w.Header().Set("WWW-Authenticate", authH)
 			w.WriteHeader(401)
 			return
@@ -101,7 +101,7 @@ func TestAuthenticateOK(t *testing.T) {
 	token := NewToken(req)
 	saveToken(token)
 	// Load private key
-	signer, err := ParseRSAPrivatePEMKey(privKey)
+	signer, err := ParsePrivatePEMKey(privKey)
 	assert.NoError(t, err)
 
 	claim := sha1.Sum([]byte(token.Source + user + token.Nonce))
@@ -132,7 +132,7 @@ func TestAuthenticateOK(t *testing.T) {
 	assert.Equal(t, 401, res.StatusCode)
 	assert.Empty(t, res.Header.Get("User"))
 
-	authz, err := ParseRSAAuthenticateHeader(res.Header.Get("WWW-Authenticate"))
+	authz, err := ParseAuthenticateHeader(res.Header.Get("WWW-Authenticate"))
 	assert.NoError(t, err)
 
 	claim = sha1.Sum([]byte(authz.Source + user + authz.Nonce))
@@ -158,7 +158,7 @@ func TestAuthenticateBad(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Load private key
-	signer, err := ParseRSAPrivatePEMKey(privKey)
+	signer, err := ParsePrivatePEMKey(privKey)
 	assert.NoError(t, err)
 
 	// bad token
@@ -265,16 +265,16 @@ func TestAuthenticateBad(t *testing.T) {
 	assert.Empty(t, authUser)
 }
 
-func TestParseRSAAuthorizationHeader(t *testing.T) {
-	_, err := ParseRSAAuthorizationHeader("")
+func TestParseAuthorizationHeader(t *testing.T) {
+	_, err := ParseAuthorizationHeader("")
 	assert.Error(t, err)
 
 	h := "WebID-Other source=\"http://server.org/\""
-	_, err = ParseRSAAuthorizationHeader(h)
+	_, err = ParseAuthorizationHeader(h)
 	assert.Error(t, err)
 
 	h = "WebID-RSA source=\"http://server.org/\", username=\"http://example.org/\", nonce=\"string1\", sig=\"string2\""
-	p, err := ParseRSAAuthorizationHeader(h)
+	p, err := ParseAuthorizationHeader(h)
 	assert.NoError(t, err)
 	assert.Equal(t, "http://server.org/", p.Source)
 	assert.Equal(t, "http://example.org/", p.Username)
@@ -282,7 +282,7 @@ func TestParseRSAAuthorizationHeader(t *testing.T) {
 	assert.Equal(t, "string2", p.Signature)
 
 	h = "WebID-RSA source=\"http://server.org/\", \nusername=\"http://example.org/\", \nnonce=\"string1\",\n sig=\"string2\""
-	p, err = ParseRSAAuthorizationHeader(h)
+	p, err = ParseAuthorizationHeader(h)
 	assert.NoError(t, err)
 	assert.Equal(t, "http://server.org/", p.Source)
 	assert.Equal(t, "http://example.org/", p.Username)
@@ -290,27 +290,27 @@ func TestParseRSAAuthorizationHeader(t *testing.T) {
 	assert.Equal(t, "string2", p.Signature)
 }
 
-func TestNewRSAAuthenticate(t *testing.T) {
+func TestNewAuthenticateHeader(t *testing.T) {
 	req, err := http.NewRequest("GET", testMockServer.URL, nil)
 	assert.NoError(t, err)
-	authH := NewRSAAuthenticateHeader(req)
+	authH := NewAuthenticateHeader(req)
 
-	parsed, err := ParseRSAAuthenticateHeader(authH)
+	parsed, err := ParseAuthenticateHeader(authH)
 	assert.NoError(t, err)
 	assert.Equal(t, randLength, len(parsed.Nonce))
 	assert.Equal(t, req.Host, parsed.Source)
 }
 
-func TestParseRSAAuthenticateHeader(t *testing.T) {
-	_, err := ParseRSAAuthenticateHeader("")
+func TestParseAuthenticateHeader(t *testing.T) {
+	_, err := ParseAuthenticateHeader("")
 	assert.Error(t, err)
 
 	h := `WebID-Other source="http://server.org/"`
-	_, err = ParseRSAAuthenticateHeader(h)
+	_, err = ParseAuthenticateHeader(h)
 	assert.Error(t, err)
 
 	h = `WebID-RSA source="http://server.org/", nonce="string1"`
-	p, err := ParseRSAAuthenticateHeader(h)
+	p, err := ParseAuthenticateHeader(h)
 	assert.NoError(t, err)
 	assert.Equal(t, "string1", p.Nonce)
 	assert.Equal(t, "http://server.org/", p.Source)
@@ -326,12 +326,12 @@ func TestAuthToken(t *testing.T) {
 	assert.NotNil(t, getToken(token.Nonce))
 
 	h := "WebID-RSA source=\"" + token.Source + "\", username=\"http://example.org/\", nonce=\"" + token.Nonce + "\", sig=\"string2\""
-	auth, err := ParseRSAAuthorizationHeader(h)
+	auth, err := ParseAuthorizationHeader(h)
 	assert.NoError(t, err)
 	err = ValidateToken(auth)
 	assert.NoError(t, err)
 
-	err = ValidateToken(&RSAAuthorization{})
+	err = ValidateToken(&Authorization{})
 	assert.Error(t, err)
 
 	DurationScale = time.Microsecond
@@ -339,7 +339,7 @@ func TestAuthToken(t *testing.T) {
 	saveToken(token)
 	h = "WebID-RSA source=\"" + token.Source + "\", username=\"http://example.org/\", nonce=\"" + token.Nonce + "\", sig=\"string2\""
 	time.Sleep(time.Millisecond * 1)
-	auth, err = ParseRSAAuthorizationHeader(h)
+	auth, err = ParseAuthorizationHeader(h)
 	assert.NoError(t, err)
 	err = ValidateToken(auth)
 	assert.Error(t, err)
