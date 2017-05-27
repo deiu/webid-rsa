@@ -1,4 +1,9 @@
 # webid-rsa
+[![](https://img.shields.io/badge/project-Solid-7C4DFF.svg?style=flat-square)](https://github.com/solid/solid)
+[![Build Status](https://travis-ci.org/deiu/webid-rsa.svg?branch=master)](https://travis-ci.org/deiu/webid-rsa)
+[![Coverage Status](https://coveralls.io/repos/github/deiu/webid-rsa/badge.svg?branch=master)](https://coveralls.io/github/deiu/webid-rsa?branch=master)
+
+
 WebID-RSA authentication library in Go
 
 # Install
