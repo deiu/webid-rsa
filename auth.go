@@ -115,7 +115,7 @@ func Authenticate(req *http.Request) (string, error) {
 	}
 
 	if len(authH.Source) == 0 || authH.Source != req.Host {
-		return "", errors.New("Bad source URI for auth token: " + authH.Source + " -- possible MITM attack!")
+		return "", errors.New("Bad source URI for auth token: " + authH.Source)
 	}
 
 	claim := sha1.Sum([]byte(authH.Source + authH.Username + authH.Nonce))
