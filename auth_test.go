@@ -273,6 +273,18 @@ func TestParseAuthorizationHeader(t *testing.T) {
 	_, err = ParseAuthorizationHeader(h)
 	assert.Error(t, err)
 
+	h = "WebID-RSA"
+	_, err = ParseAuthorizationHeader(h)
+	assert.Error(t, err)
+
+	h = "WebID-RSA foo"
+	_, err = ParseAuthorizationHeader(h)
+	assert.NoError(t, err)
+
+	h = "WebID-RSA source=foo"
+	_, err = ParseAuthorizationHeader(h)
+	assert.NoError(t, err)
+
 	h = "WebID-RSA source=\"http://server.org/\", username=\"http://example.org/\", nonce=\"string1\", sig=\"string2\""
 	p, err := ParseAuthorizationHeader(h)
 	assert.NoError(t, err)
@@ -308,6 +320,14 @@ func TestParseAuthenticateHeader(t *testing.T) {
 	h := `WebID-Other source="http://server.org/"`
 	_, err = ParseAuthenticateHeader(h)
 	assert.Error(t, err)
+
+	h = `WebID-RSA`
+	_, err = ParseAuthenticateHeader(h)
+	assert.Error(t, err)
+
+	h = `WebID-RSA foo`
+	_, err = ParseAuthenticateHeader(h)
+	assert.NoError(t, err)
 
 	h = `WebID-RSA source="http://server.org/", nonce="string1"`
 	p, err := ParseAuthenticateHeader(h)

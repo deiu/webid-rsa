@@ -45,17 +45,20 @@ func ParseAuthorizationHeader(header string) (*Authorization, error) {
 
 	opts := make(map[string]string)
 	parts := strings.SplitN(header, " ", 2)
-	if parts[0] != "WebID-RSA" {
+	if len(parts) < 2 || parts[0] != "WebID-RSA" {
 		return auth, errors.New("Not a WebID-RSA authorization header. Got " + parts[0])
 	}
 
 	parts = strings.Split(parts[1], ",")
 
 	for _, part := range parts {
-		vals := strings.SplitN(strings.TrimSpace(part), "=", 2)
-		key := vals[0]
-		val := strings.Replace(vals[1], "\"", "", -1)
-		opts[key] = val
+		if i := strings.Index(part, "="); i < 0 {
+			opts[part] = ""
+		} else {
+			vals := strings.SplitN(strings.TrimSpace(part), "=", 2)
+			key := vals[0]
+			opts[key] = unquote(vals[1])
+		}
 	}
 
 	auth = &Authorization{
@@ -77,17 +80,20 @@ func ParseAuthenticateHeader(header string) (*Authentication, error) {
 
 	opts := make(map[string]string)
 	parts := strings.SplitN(header, " ", 2)
-	if parts[0] != "WebID-RSA" {
+	if len(parts) < 2 || parts[0] != "WebID-RSA" {
 		return auth, errors.New("Not a WebID-RSA authentication header. Got " + parts[0])
 	}
 
 	parts = strings.Split(parts[1], ",")
 
 	for _, part := range parts {
-		vals := strings.SplitN(strings.TrimSpace(part), "=", 2)
-		key := vals[0]
-		val := strings.Replace(vals[1], "\"", "", -1)
-		opts[key] = val
+		if i := strings.Index(part, "="); i < 0 {
+			opts[part] = ""
+		} else {
+			vals := strings.SplitN(strings.TrimSpace(part), "=", 2)
+			key := vals[0]
+			opts[key] = unquote(vals[1])
+		}
 	}
 
 	auth = &Authentication{
