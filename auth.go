@@ -32,7 +32,7 @@ type Authentication struct {
 
 // Authorization structure
 type Authorization struct {
-	Source, Username, Nonce, Signature string
+	Type, Source, Username, Nonce, Signature string
 }
 
 // ParseAuthorizationHeader parses an Authorization header into a local Authorization structure
@@ -45,9 +45,10 @@ func ParseAuthorizationHeader(header string) (*Authorization, error) {
 
 	opts := make(map[string]string)
 	parts := strings.SplitN(header, " ", 2)
-	if len(parts) < 2 || parts[0] != "WebID-RSA" {
-		return auth, errors.New("Not a WebID-RSA authorization header. Got " + parts[0])
+	if len(parts) < 2 {
+		return auth, errors.New("Malformed authorization header. Got " + header)
 	}
+	opts["type"] = parts[0]
 
 	parts = strings.Split(parts[1], ",")
 
@@ -62,6 +63,7 @@ func ParseAuthorizationHeader(header string) (*Authorization, error) {
 	}
 
 	auth = &Authorization{
+		opts["type"],
 		opts["source"],
 		opts["username"],
 		opts["nonce"],
@@ -112,6 +114,10 @@ func Authenticate(req *http.Request) (string, error) {
 	authH, err := ParseAuthorizationHeader(req.Header.Get("Authorization"))
 	if err != nil {
 		return "", err
+	}
+
+	if authH.Type != "WebID-RSA" {
+		return "", errors.New("Not a WebID-RSA type: " + authH.Type)
 	}
 
 	if len(authH.Source) == 0 || authH.Source != req.Host {
