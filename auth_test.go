@@ -371,18 +371,18 @@ func TestOrigin(t *testing.T) {
 	req, err := http.NewRequest("GET", "http://example.com", nil)
 	assert.NoError(t, err)
 	req.Header.Add("X-Forward-Host", "example.org")
-	assert.Equal(t, "http://example.org", getOrigin(req))
+	assert.Equal(t, "http://example.org", GetOrigin(req))
 
 	req, err = http.NewRequest("GET", "/foo", nil)
 	assert.NoError(t, err)
-	assert.Equal(t, "http://localhost", getOrigin(req))
+	assert.Equal(t, "http://localhost", GetOrigin(req))
 
 	req, err = http.NewRequest("GET", "http://localhost:80", nil)
 	assert.NoError(t, err)
-	assert.Equal(t, "http://localhost", getOrigin(req))
+	assert.Equal(t, "http://localhost", GetOrigin(req))
 
 	req, err = http.NewRequest("GET", "http://example.com", nil)
 	assert.NoError(t, err)
 	req.Header.Set("X-Forwarded-Proto", "https")
-	assert.Equal(t, "https://example.com", getOrigin(req))
+	assert.Equal(t, "https://example.com", GetOrigin(req))
 }

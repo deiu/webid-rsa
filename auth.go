@@ -176,7 +176,7 @@ func NewAuthenticateHeader(req *http.Request) string {
 	return `WebID-RSA source="` + token.Source + `", nonce="` + token.Nonce + `"`
 }
 
-func getOrigin(req *http.Request) string {
+func GetOrigin(req *http.Request) string {
 	scheme := "http"
 	if req.TLS != nil || req.Header.Get("X-Forwarded-Proto") == "https" {
 		scheme += "s"
